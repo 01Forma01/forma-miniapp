@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FORMA Mini App</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #111;
+      color: #fff;
+    }
+    .card {
+      border: 1px solid #2b2b2b;
+      border-radius: 16px;
+      padding: 20px;
+      background: #1a1a1a;
+    }
+    button {
+      margin-top: 16px;
+      width: 100%;
+      padding: 14px;
+      border: 0;
+      border-radius: 12px;
+      background: #fff;
+      color: #111;
+      font-weight: 600;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>FORMA STORE</h2>
+    <p id="user-info">Загрузка данных пользователя...</p>
+    <button id="close-btn">Закрыть</button>
+  </div>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.ready();
+    tg.expand();
+
+    const user = tg.initDataUnsafe?.user;
+    const infoEl = document.getElementById("user-info");
+    if (user) {
+      infoEl.textContent = `Привет, ${user.first_name}! (@${user.username || "без username"})`;
+    } else {
+      infoEl.textContent = "Откройте страницу внутри Telegram Mini App.";
+    }
+
+    document.getElementById("close-btn").addEventListener("click", () => {
+      tg.close();
+    });
+  </script>
+</body>
+</html>
