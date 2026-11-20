@@ -6,7 +6,7 @@ const DROP_SUBS_KEY = `forma_drop_subs_${tgUser.id}`;
 
 // Временная прямая отправка с фронтенда для теста (после проверки лучше вынести в конструктор ботов и сменить токен)
 const BOT_TOKEN = "9018078921:AAFtr3AOF9jIcRCLsJyBXjTdlXU1I8rjtSk";
-const TARGET_CHAT_ID = "-5230831827";
+const TARGET_CHAT_ID = "-1004351317145";
 
 async function sendTelegramNotification(text) {
   if (!BOT_TOKEN || BOT_TOKEN === "ВСТАВЬ_ТОКЕН_БОТА") {
