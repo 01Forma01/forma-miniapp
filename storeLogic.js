@@ -5,7 +5,7 @@ const CART_KEY = `forma_cart_${tgUser.id}`;
 const DROP_SUBS_KEY = `forma_drop_subs_${tgUser.id}`;
 
 // Временная прямая отправка с фронтенда для теста (после проверки лучше вынести в конструктор ботов и сменить токен)
-const BOT_TOKEN = "9018078921:AAGDZFxcJ6rjKZZbcgSWnskPL1-60i0X2lM";
+const BOT_TOKEN = 9018078921:AAFtr3AOF9jIcRCLsJyBXjTdlXU1I8rjtSk;
 const TARGET_CHAT_ID = "-5230831827";
 
 async function sendTelegramNotification(text) {
