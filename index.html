@@ -962,10 +962,24 @@
           attributionControl: false
         }).setView([59.9342, 30.3351], 11);
 
-        // Тайлы с подписями на русском/кириллице (Carto Voyager / OSM)
-        window.L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+        // Бесплатные тайлы OpenStreetMap без ключа API + резервный слой
+        const osmLayer = window.L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
           maxZoom: 19
-        }).addTo(leafletMap);
+        });
+        const fallbackLayer = window.L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
+          maxZoom: 19
+        });
+
+        let tileErrors = 0;
+        osmLayer.on("tileerror", () => {
+          tileErrors += 1;
+          if (tileErrors >= 4 && leafletMap && !leafletMap.hasLayer(fallbackLayer)) {
+            leafletMap.removeLayer(osmLayer);
+            fallbackLayer.addTo(leafletMap);
+          }
+        });
+
+        osmLayer.addTo(leafletMap);
 
         markersLayer = window.L.layerGroup().addTo(leafletMap);
       }
