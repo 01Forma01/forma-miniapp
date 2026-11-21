@@ -14,19 +14,19 @@ export const DELIVERY_METHODS = [
     id: "cdek",
     label: "СДЭК",
     shortLabel: "СДЭК (ПВЗ)",
-    hint: "Нажми на метку ПВЗ на мини-карте или выбери точку ниже (можно дописать свой адрес вручную)"
+    hint: "Нажми на метку на карте, выбери ПВЗ ниже или впиши адрес — точка сразу появится на карте"
   },
   {
     id: "yandex",
     label: "Яндекс Маркет",
     shortLabel: "Яндекс Маркет (ПВЗ)",
-    hint: "Нажми на метку ПВЗ Яндекс Маркета на карте или выбери точку из списка"
+    hint: "Выбери ПВЗ Яндекс Маркета на карте или списком либо впиши свой адрес"
   },
   {
     id: "pochta",
     label: "Почта России",
     shortLabel: "Почта России",
-    hint: "Выбери отделение на карте или впиши индекс, город, улицу, дом и квартиру"
+    hint: "Впиши полный адрес или индекс и отделение — карта покажет местоположение"
   },
   {
     id: "pickup",
@@ -40,25 +40,25 @@ export const PICKUP_LOCATIONS_BY_METHOD = {
   cdek: [
     {
       city: "Санкт-Петербург",
-      label: "СДЭК · Невский пр., 108",
+      label: "СДЭК · Санкт-Петербург, Невский пр., 108",
       lat: 59.9311,
       lng: 30.3609
     },
     {
       city: "Санкт-Петербург",
-      label: "СДЭК · Московский пр., 189",
+      label: "СДЭК · Санкт-Петербург, Московский пр., 189",
       lat: 59.8696,
       lng: 30.3212
     },
     {
       city: "Москва",
-      label: "СДЭК · Тверская ул., 22",
+      label: "СДЭК · Москва, Тверская ул., 22",
       lat: 55.7647,
       lng: 37.6054
     },
     {
       city: "Калуга",
-      label: "СДЭК · ул. Кирова, 31",
+      label: "СДЭК · Калуга, ул. Кирова, 31",
       lat: 54.5138,
       lng: 36.2612
     }
@@ -66,25 +66,25 @@ export const PICKUP_LOCATIONS_BY_METHOD = {
   yandex: [
     {
       city: "Санкт-Петербург",
-      label: "Яндекс Маркет · ул. Восстания, 24",
+      label: "Яндекс Маркет · Санкт-Петербург, ул. Восстания, 24",
       lat: 59.9355,
       lng: 30.3587
     },
     {
       city: "Санкт-Петербург",
-      label: "Яндекс Маркет · Большой пр. П.С., 74",
+      label: "Яндекс Маркет · Санкт-Петербург, Большой пр. П.С., 74",
       lat: 59.9635,
       lng: 30.2962
     },
     {
       city: "Москва",
-      label: "Яндекс Маркет · ул. Покровка, 18",
+      label: "Яндекс Маркет · Москва, ул. Покровка, 18",
       lat: 55.7596,
       lng: 37.6512
     },
     {
       city: "Калуга",
-      label: "Яндекс Маркет · пл. Победы, 4",
+      label: "Яндекс Маркет · Калуга, пл. Победы, 4",
       lat: 54.5105,
       lng: 36.2564
     }
@@ -92,19 +92,19 @@ export const PICKUP_LOCATIONS_BY_METHOD = {
   pochta: [
     {
       city: "Санкт-Петербург",
-      label: "Почта России · 191025, Невский пр., 84",
+      label: "Почта России · Санкт-Петербург, Невский пр., 84",
       lat: 59.9333,
       lng: 30.3526
     },
     {
       city: "Москва",
-      label: "Почта России · 101000, Мясницкая ул., 26",
+      label: "Почта России · Москва, Мясницкая ул., 26",
       lat: 55.7629,
       lng: 37.6382
     },
     {
       city: "Калуга",
-      label: "Почта России · 248000, ул. Ленина, 87",
+      label: "Почта России · Калуга, ул. Ленина, 87",
       lat: 54.5091,
       lng: 36.2535
     }
@@ -296,7 +296,6 @@ export function validateDeliveryDetails(delivery = {}) {
   const method = delivery.method || "cdek";
   const recipientName = (delivery.recipientName || "").trim();
   const phone = (delivery.phone || "").trim();
-  const city = (delivery.city || "").trim();
   const destination = (delivery.destination || "").trim();
   const pickupPointId = delivery.pickupPointId || "";
 
@@ -314,10 +313,6 @@ export function validateDeliveryDetails(delivery = {}) {
       return { valid: false, error: "Выбери точку самовывоза" };
     }
     return { valid: true, error: null };
-  }
-
-  if (!city) {
-    return { valid: false, error: "Укажи город доставки" };
   }
 
   if (!destination || destination.length < 4) {
@@ -370,7 +365,6 @@ export function checkoutOrder(cart, delivery = {}, comment = "", existingOrders 
     methodLabel: methodMeta.label,
     recipientName: (delivery.recipientName || "").trim(),
     phone: (delivery.phone || "").trim(),
-    city: methodMeta.id === "pickup" ? (pickupPoint?.title || "Самовывоз") : (delivery.city || "").trim(),
     destination:
       methodMeta.id === "pickup"
         ? `${pickupPoint?.title || "Самовывоз"} — ${pickupPoint?.address || ""}`
@@ -427,8 +421,7 @@ export function checkoutOrder(cart, delivery = {}, comment = "", existingOrders 
         ]
       : [
           `Способ: ${normalizedDelivery.methodLabel}`,
-          `Город: ${normalizedDelivery.city}`,
-          `ПВЗ / адрес: ${normalizedDelivery.destination}`,
+          `Адрес / ПВЗ: ${normalizedDelivery.destination}`,
           `Получатель: ${normalizedDelivery.recipientName}`,
           `Телефон: ${normalizedDelivery.phone}`
         ];
@@ -444,7 +437,7 @@ export function checkoutOrder(cart, delivery = {}, comment = "", existingOrders 
     "",
     `Итого: ${totalPrice} ₽`,
     `Статус: ${orderRecord.statusLabel}`,
-    normalizedDelivery.comment || orderRecord.comment
+    orderRecord.comment
       ? `Комментарий: ${orderRecord.comment}`
       : "Комментарий: —"
   ].join("\n");
