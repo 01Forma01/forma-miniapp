@@ -521,6 +521,30 @@
       font-family: inherit;
     }
 
+    .address-row {
+      display: flex;
+      gap: 8px;
+      align-items: stretch;
+      margin-bottom: 10px;
+    }
+
+    .address-row .field-input {
+      margin-bottom: 0;
+      flex: 1;
+    }
+
+    .find-btn {
+      padding: 0 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface-elevated);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
     .mini-map-wrap {
       border-radius: 12px;
       overflow: hidden;
@@ -531,7 +555,7 @@
 
     #pvzMap {
       width: 100%;
-      height: 210px;
+      height: 220px;
       z-index: 1;
     }
 
@@ -745,21 +769,23 @@
         <div id="deliveryMethodsGrid" class="delivery-grid"></div>
         <p id="deliveryHint" class="delivery-hint"></p>
 
-        <div class="section-label" style="margin-top:12px;">2. Данные получателя и точка</div>
+        <div class="section-label" style="margin-top:12px;">2. Данные получателя и адрес</div>
         <input id="recipientNameInput" class="field-input" type="text" placeholder="ФИО получателя (как в паспорте)" />
         <input id="recipientPhoneInput" class="field-input" type="tel" placeholder="Телефон (+7 999 000-00-00)" />
 
         <div id="courierFieldsWrap">
-          <input id="deliveryCityInput" class="field-input" type="text" placeholder="Город (например: Санкт-Петербург, Москва, Калуга)" />
+          <div class="address-row">
+            <input id="deliveryDestInput" class="field-input" type="text" placeholder="Адрес или номер ПВЗ (например: Санкт-Петербург, Невский пр., 108)" />
+            <button id="findOnMapBtn" type="button" class="find-btn">На карту</button>
+          </div>
 
           <div class="mini-map-wrap">
             <div id="pvzMap"></div>
-            <div class="mini-map-caption">Нажми на метку на карте, чтобы выбрать ПВЗ</div>
+            <div id="mapStatusCaption" class="mini-map-caption">Нажмите на метку или введите адрес — точка отобразится на карте</div>
           </div>
 
-          <div class="quick-points-label">Точки на карте (нажми для выбора):</div>
+          <div class="quick-points-label">Готовые точки ПВЗ (нажмите для выбора):</div>
           <div id="quickPointsList" class="quick-points-list"></div>
-          <input id="deliveryDestInput" class="field-input" type="text" placeholder="Адрес или номер выбранного ПВЗ" />
         </div>
 
         <div id="pickupFieldsWrap" style="display:none;">
@@ -829,6 +855,8 @@
 
     let leafletMap = null;
     let markersLayer = null;
+    let customAddressMarker = null;
+    let geocodeTimer = null;
 
     MOCK_CATALOG.forEach((product) => {
       const firstInStock = product.variants.find((v) => v.stock > 0) || product.variants[0];
@@ -852,19 +880,72 @@
       btn.textContent = `Заказы (${orders.length})`;
     }
 
+    function setMapCaption(text) {
+      const el = document.getElementById("mapStatusCaption");
+      if (el) el.textContent = text;
+    }
+
+    function placeCustomAddressMarker(lat, lng, labelText) {
+      if (!leafletMap || !window.L) return;
+      if (customAddressMarker) {
+        markersLayer?.removeLayer(customAddressMarker);
+      }
+      customAddressMarker = window.L.circleMarker([lat, lng], {
+        radius: 10,
+        color: "#ffffff",
+        weight: 2,
+        fillColor: "#ff5a36",
+        fillOpacity: 0.95
+      });
+      customAddressMarker.bindTooltip(labelText, { direction: "top", permanent: false });
+      customAddressMarker.addTo(markersLayer);
+      leafletMap.setView([lat, lng], 15);
+    }
+
+    async function geocodeAddressOnMap(rawAddress) {
+      const query = (rawAddress || "").trim();
+      if (query.length < 4 || !leafletMap) return;
+
+      const cleanedQuery = query
+        .replace(/^(СДЭК|Яндекс Маркет|Почта России)\s*·\s*/i, "")
+        .trim();
+
+      setMapCaption("Поиск адреса на карте...");
+
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=ru&q=${encodeURIComponent(cleanedQuery)}`;
+        const resp = await fetch(url, {
+          headers: {
+            "Accept": "application/json"
+          }
+        });
+        if (!resp.ok) throw new Error("Geocode response error");
+        const results = await resp.json();
+
+        if (Array.isArray(results) && results.length > 0) {
+          const lat = parseFloat(results[0].lat);
+          const lon = parseFloat(results[0].lon);
+          if (!Number.isNaN(lat) && !Number.isNaN(lon)) {
+            placeCustomAddressMarker(lat, lon, query);
+            setMapCaption(`Найдено: ${results[0].display_name.split(",").slice(0, 3).join(",")}`);
+            return;
+          }
+        }
+        setMapCaption("Адрес не найден — проверьте написание или выберите точку ниже");
+      } catch (_) {
+        setMapCaption("Не удалось загрузить координаты — введите точный адрес вручную");
+      }
+    }
+
     function selectPvzPoint(pt, shouldZoom = true) {
       if (!pt) return;
-      const cityInput = document.getElementById("deliveryCityInput");
       const destInput = document.getElementById("deliveryDestInput");
-
-      if (pt.city) {
-        cityInput.value = pt.city;
-      }
       destInput.value = pt.label;
       selectedQuickPointLabel = pt.label;
 
       if (shouldZoom && leafletMap && typeof pt.lat === "number" && typeof pt.lng === "number") {
-        leafletMap.setView([pt.lat, pt.lng], 14);
+        placeCustomAddressMarker(pt.lat, pt.lng, pt.label);
+        setMapCaption(`Выбрано: ${pt.label}`);
       }
 
       renderQuickPoints();
@@ -881,7 +962,8 @@
           attributionControl: false
         }).setView([59.9342, 30.3351], 11);
 
-        window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        // Тайлы с подписями на русском/кириллице (Carto Voyager / OSM)
+        window.L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
           maxZoom: 19
         }).addTo(leafletMap);
 
@@ -898,18 +980,12 @@
     function refreshMapMarkers() {
       if (!leafletMap || !markersLayer || !window.L) return;
       markersLayer.clearLayers();
+      customAddressMarker = null;
 
       const points = PICKUP_LOCATIONS_BY_METHOD[selectedDeliveryMethod] || [];
-      const cityQuery = document.getElementById("deliveryCityInput").value.trim().toLowerCase();
-
-      const filtered = cityQuery
-        ? points.filter((p) => p.city.toLowerCase().includes(cityQuery))
-        : points;
-
-      const listToShow = filtered.length ? filtered : points;
       const coords = [];
 
-      listToShow.forEach((pt) => {
+      points.forEach((pt) => {
         if (typeof pt.lat !== "number" || typeof pt.lng !== "number") return;
         coords.push([pt.lat, pt.lng]);
 
@@ -931,30 +1007,25 @@
         marker.addTo(markersLayer);
       });
 
-      if (coords.length === 1) {
-        leafletMap.setView(coords[0], 14);
-      } else if (coords.length > 1) {
-        leafletMap.fitBounds(coords, { padding: [24, 24] });
+      const currentAddress = document.getElementById("deliveryDestInput").value.trim();
+      if (currentAddress.length >= 4) {
+        geocodeAddressOnMap(currentAddress);
+      } else if (coords.length > 0) {
+        leafletMap.setView(coords[0], 11);
+        setMapCaption("Нажмите на метку или введите адрес — точка отобразится на карте");
       }
     }
 
     function renderQuickPoints() {
       const listEl = document.getElementById("quickPointsList");
       const points = PICKUP_LOCATIONS_BY_METHOD[selectedDeliveryMethod] || [];
-      const cityQuery = document.getElementById("deliveryCityInput").value.trim().toLowerCase();
 
-      const filtered = cityQuery
-        ? points.filter((p) => p.city.toLowerCase().includes(cityQuery))
-        : points;
-
-      const listToShow = filtered.length ? filtered : points;
-
-      if (!listToShow.length) {
+      if (!points.length) {
         listEl.innerHTML = "";
         return;
       }
 
-      listEl.innerHTML = listToShow
+      listEl.innerHTML = points
         .map(
           (pt, idx) => `
           <button
@@ -971,7 +1042,7 @@
       listEl.querySelectorAll("[data-pt-idx]").forEach((btn) => {
         btn.onclick = () => {
           haptic("light");
-          const pt = listToShow[Number(btn.dataset.ptIdx)];
+          const pt = points[Number(btn.dataset.ptIdx)];
           selectPvzPoint(pt, true);
           showToast("Точка выбрана на карте");
         };
@@ -1315,11 +1386,11 @@
         courierWrap.style.display = "block";
         pickupWrap.style.display = "none";
         if (selectedDeliveryMethod === "pochta") {
-          destInput.placeholder = "Индекс, улица, дом, кв. (или отделение Почты)";
+          destInput.placeholder = "Индекс, город, улица, дом, кв. (или отделение Почты)";
         } else if (selectedDeliveryMethod === "yandex") {
           destInput.placeholder = "Адрес или номер ПВЗ Яндекс Маркета";
         } else {
-          destInput.placeholder = "Адрес или код удобного ПВЗ СДЭК";
+          destInput.placeholder = "Адрес или номер ПВЗ СДЭК";
         }
         renderQuickPoints();
         ensureMiniMap();
@@ -1465,15 +1536,28 @@
       }).join("");
     }
 
-    document.getElementById("deliveryCityInput").addEventListener("input", () => {
-      renderQuickPoints();
-      refreshMapMarkers();
-    });
-
-    document.getElementById("deliveryDestInput").addEventListener("input", () => {
+    const destInputEl = document.getElementById("deliveryDestInput");
+    destInputEl.addEventListener("input", () => {
       selectedQuickPointLabel = "";
       renderQuickPoints();
+      clearTimeout(geocodeTimer);
+      const val = destInputEl.value.trim();
+      if (val.length >= 5) {
+        geocodeTimer = setTimeout(() => {
+          geocodeAddressOnMap(val);
+        }, 650);
+      }
     });
+
+    document.getElementById("findOnMapBtn").onclick = () => {
+      haptic("light");
+      const val = destInputEl.value.trim();
+      if (!val) {
+        showToast("Введите адрес для поиска на карте");
+        return;
+      }
+      geocodeAddressOnMap(val);
+    };
 
     const cartModal = document.getElementById("cartModal");
     document.getElementById("cartBar").onclick = () => {
@@ -1503,7 +1587,6 @@
         method: selectedDeliveryMethod,
         recipientName: document.getElementById("recipientNameInput").value,
         phone: document.getElementById("recipientPhoneInput").value,
-        city: document.getElementById("deliveryCityInput").value,
         destination: document.getElementById("deliveryDestInput").value,
         pickupPointId: selectedPickupPointId
       };
