@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>FORMA Store</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     :root {
       --bg: var(--tg-theme-bg-color, #0d0d0f);
@@ -519,10 +521,32 @@
       font-family: inherit;
     }
 
+    .mini-map-wrap {
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--surface-elevated);
+      margin-bottom: 10px;
+    }
+
+    #pvzMap {
+      width: 100%;
+      height: 210px;
+      z-index: 1;
+    }
+
+    .mini-map-caption {
+      font-size: 11px;
+      color: var(--hint);
+      padding: 7px 10px;
+      background: var(--surface-elevated);
+      border-top: 1px solid var(--border);
+    }
+
     .quick-points-label {
       font-size: 11px;
       color: var(--hint);
-      margin: -2px 0 6px;
+      margin: 2px 0 6px;
     }
 
     .quick-points-list {
@@ -543,19 +567,10 @@
       cursor: pointer;
     }
 
-    .map-link-btn {
-      display: inline-block;
-      width: 100%;
-      text-align: center;
-      text-decoration: none;
-      padding: 9px 12px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--text);
-      font-size: 12px;
+    .quick-point-btn.active {
+      border-color: var(--accent);
+      background: rgba(255, 255, 255, 0.14);
       font-weight: 700;
-      margin-bottom: 10px;
     }
 
     .pickup-card {
@@ -735,13 +750,16 @@
         <input id="recipientPhoneInput" class="field-input" type="tel" placeholder="Телефон (+7 999 000-00-00)" />
 
         <div id="courierFieldsWrap">
-          <input id="deliveryCityInput" class="field-input" type="text" placeholder="Город" />
-          <div class="quick-points-label">Быстрый выбор ПВЗ (или впиши свой адрес ниже):</div>
+          <input id="deliveryCityInput" class="field-input" type="text" placeholder="Город (например: Санкт-Петербург, Москва, Калуга)" />
+
+          <div class="mini-map-wrap">
+            <div id="pvzMap"></div>
+            <div class="mini-map-caption">Нажми на метку на карте, чтобы выбрать ПВЗ</div>
+          </div>
+
+          <div class="quick-points-label">Точки на карте (нажми для выбора):</div>
           <div id="quickPointsList" class="quick-points-list"></div>
-          <input id="deliveryDestInput" class="field-input" type="text" placeholder="Адрес или номер удобного ПВЗ" />
-          <a id="openMapLink" class="map-link-btn" href="https://yandex.ru/maps/" target="_blank" rel="noopener noreferrer">
-            Открыть точку на карте
-          </a>
+          <input id="deliveryDestInput" class="field-input" type="text" placeholder="Адрес или номер выбранного ПВЗ" />
         </div>
 
         <div id="pickupFieldsWrap" style="display:none;">
@@ -807,6 +825,10 @@
     let activeSlideIndex = 0;
     let selectedDeliveryMethod = DELIVERY_METHODS[0].id;
     let selectedPickupPointId = PICKUP_POINTS[0].id;
+    let selectedQuickPointLabel = "";
+
+    let leafletMap = null;
+    let markersLayer = null;
 
     MOCK_CATALOG.forEach((product) => {
       const firstInStock = product.variants.find((v) => v.stock > 0) || product.variants[0];
@@ -830,29 +852,116 @@
       btn.textContent = `Заказы (${orders.length})`;
     }
 
-    function updateMapLink() {
-      const city = document.getElementById("deliveryCityInput").value.trim();
-      const dest = document.getElementById("deliveryDestInput").value.trim();
-      const query = [city, dest].filter(Boolean).join(", ") || "пункт выдачи";
-      const mapLink = document.getElementById("openMapLink");
-      mapLink.href = `https://yandex.ru/maps/?text=${encodeURIComponent(query)}`;
+    function selectPvzPoint(pt, shouldZoom = true) {
+      if (!pt) return;
+      const cityInput = document.getElementById("deliveryCityInput");
+      const destInput = document.getElementById("deliveryDestInput");
+
+      if (pt.city) {
+        cityInput.value = pt.city;
+      }
+      destInput.value = pt.label;
+      selectedQuickPointLabel = pt.label;
+
+      if (shouldZoom && leafletMap && typeof pt.lat === "number" && typeof pt.lng === "number") {
+        leafletMap.setView([pt.lat, pt.lng], 14);
+      }
+
+      renderQuickPoints();
+    }
+
+    function ensureMiniMap() {
+      if (selectedDeliveryMethod === "pickup" || !window.L) return;
+      const mapEl = document.getElementById("pvzMap");
+      if (!mapEl) return;
+
+      if (!leafletMap) {
+        leafletMap = window.L.map("pvzMap", {
+          zoomControl: true,
+          attributionControl: false
+        }).setView([59.9342, 30.3351], 11);
+
+        window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19
+        }).addTo(leafletMap);
+
+        markersLayer = window.L.layerGroup().addTo(leafletMap);
+      }
+
+      setTimeout(() => {
+        leafletMap?.invalidateSize();
+      }, 120);
+
+      refreshMapMarkers();
+    }
+
+    function refreshMapMarkers() {
+      if (!leafletMap || !markersLayer || !window.L) return;
+      markersLayer.clearLayers();
+
+      const points = PICKUP_LOCATIONS_BY_METHOD[selectedDeliveryMethod] || [];
+      const cityQuery = document.getElementById("deliveryCityInput").value.trim().toLowerCase();
+
+      const filtered = cityQuery
+        ? points.filter((p) => p.city.toLowerCase().includes(cityQuery))
+        : points;
+
+      const listToShow = filtered.length ? filtered : points;
+      const coords = [];
+
+      listToShow.forEach((pt) => {
+        if (typeof pt.lat !== "number" || typeof pt.lng !== "number") return;
+        coords.push([pt.lat, pt.lng]);
+
+        const marker = window.L.circleMarker([pt.lat, pt.lng], {
+          radius: 9,
+          color: "#ffffff",
+          weight: 2,
+          fillColor: "#2ea6ff",
+          fillOpacity: 0.95
+        });
+
+        marker.bindTooltip(pt.label, { direction: "top" });
+        marker.on("click", () => {
+          haptic("light");
+          selectPvzPoint(pt, true);
+          showToast(`Выбрано: ${pt.label}`);
+        });
+
+        marker.addTo(markersLayer);
+      });
+
+      if (coords.length === 1) {
+        leafletMap.setView(coords[0], 14);
+      } else if (coords.length > 1) {
+        leafletMap.fitBounds(coords, { padding: [24, 24] });
+      }
     }
 
     function renderQuickPoints() {
       const listEl = document.getElementById("quickPointsList");
-      const cityInput = document.getElementById("deliveryCityInput");
-      const destInput = document.getElementById("deliveryDestInput");
       const points = PICKUP_LOCATIONS_BY_METHOD[selectedDeliveryMethod] || [];
+      const cityQuery = document.getElementById("deliveryCityInput").value.trim().toLowerCase();
 
-      if (!points.length) {
+      const filtered = cityQuery
+        ? points.filter((p) => p.city.toLowerCase().includes(cityQuery))
+        : points;
+
+      const listToShow = filtered.length ? filtered : points;
+
+      if (!listToShow.length) {
         listEl.innerHTML = "";
         return;
       }
 
-      listEl.innerHTML = points
+      listEl.innerHTML = listToShow
         .map(
           (pt, idx) => `
-          <button type="button" class="quick-point-btn" data-pt-idx="${idx}">
+          <button
+            type="button"
+            class="quick-point-btn ${pt.label === selectedQuickPointLabel ? "active" : ""}"
+            data-pt-idx="${idx}"
+          >
             ${pt.label}
           </button>
         `
@@ -862,14 +971,9 @@
       listEl.querySelectorAll("[data-pt-idx]").forEach((btn) => {
         btn.onclick = () => {
           haptic("light");
-          const pt = points[Number(btn.dataset.ptIdx)];
-          if (!pt) return;
-          if (pt.city && pt.city !== "До востребования" && !cityInput.value.trim()) {
-            cityInput.value = pt.city;
-          }
-          destInput.value = pt.label;
-          updateMapLink();
-          showToast("Точка подставлена");
+          const pt = listToShow[Number(btn.dataset.ptIdx)];
+          selectPvzPoint(pt, true);
+          showToast("Точка выбрана на карте");
         };
       });
     }
@@ -1218,13 +1322,14 @@
           destInput.placeholder = "Адрес или код удобного ПВЗ СДЭК";
         }
         renderQuickPoints();
-        updateMapLink();
+        ensureMiniMap();
       }
 
       grid.querySelectorAll("[data-method]").forEach((btn) => {
         btn.onclick = () => {
           haptic("light");
           selectedDeliveryMethod = btn.dataset.method;
+          selectedQuickPointLabel = "";
           renderDeliverySelector();
         };
       });
@@ -1360,14 +1465,22 @@
       }).join("");
     }
 
-    document.getElementById("deliveryCityInput").addEventListener("input", updateMapLink);
-    document.getElementById("deliveryDestInput").addEventListener("input", updateMapLink);
+    document.getElementById("deliveryCityInput").addEventListener("input", () => {
+      renderQuickPoints();
+      refreshMapMarkers();
+    });
+
+    document.getElementById("deliveryDestInput").addEventListener("input", () => {
+      selectedQuickPointLabel = "";
+      renderQuickPoints();
+    });
 
     const cartModal = document.getElementById("cartModal");
     document.getElementById("cartBar").onclick = () => {
       haptic("light");
       renderCartModal();
       cartModal.classList.add("open");
+      ensureMiniMap();
     };
     document.getElementById("closeCartBtn").onclick = () => cartModal.classList.remove("open");
     cartModal.onclick = (e) => {
