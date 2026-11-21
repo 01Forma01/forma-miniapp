@@ -519,6 +519,45 @@
       font-family: inherit;
     }
 
+    .quick-points-label {
+      font-size: 11px;
+      color: var(--hint);
+      margin: -2px 0 6px;
+    }
+
+    .quick-points-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .quick-point-btn {
+      text-align: left;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface-elevated);
+      color: var(--text);
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .map-link-btn {
+      display: inline-block;
+      width: 100%;
+      text-align: center;
+      text-decoration: none;
+      padding: 9px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
     .pickup-card {
       background: var(--surface-elevated);
       border: 1px solid var(--border);
@@ -697,7 +736,12 @@
 
         <div id="courierFieldsWrap">
           <input id="deliveryCityInput" class="field-input" type="text" placeholder="Город" />
+          <div class="quick-points-label">Быстрый выбор ПВЗ (или впиши свой адрес ниже):</div>
+          <div id="quickPointsList" class="quick-points-list"></div>
           <input id="deliveryDestInput" class="field-input" type="text" placeholder="Адрес или номер удобного ПВЗ" />
+          <a id="openMapLink" class="map-link-btn" href="https://yandex.ru/maps/" target="_blank" rel="noopener noreferrer">
+            Открыть точку на карте
+          </a>
         </div>
 
         <div id="pickupFieldsWrap" style="display:none;">
@@ -730,6 +774,7 @@
     import { MOCK_CATALOG } from "./catalog.mock.js";
     import {
       DELIVERY_METHODS,
+      PICKUP_LOCATIONS_BY_METHOD,
       PICKUP_POINTS,
       loadState,
       addToCart,
@@ -783,6 +828,50 @@
     function updateOrdersButton() {
       const btn = document.getElementById("openOrdersBtn");
       btn.textContent = `Заказы (${orders.length})`;
+    }
+
+    function updateMapLink() {
+      const city = document.getElementById("deliveryCityInput").value.trim();
+      const dest = document.getElementById("deliveryDestInput").value.trim();
+      const query = [city, dest].filter(Boolean).join(", ") || "пункт выдачи";
+      const mapLink = document.getElementById("openMapLink");
+      mapLink.href = `https://yandex.ru/maps/?text=${encodeURIComponent(query)}`;
+    }
+
+    function renderQuickPoints() {
+      const listEl = document.getElementById("quickPointsList");
+      const cityInput = document.getElementById("deliveryCityInput");
+      const destInput = document.getElementById("deliveryDestInput");
+      const points = PICKUP_LOCATIONS_BY_METHOD[selectedDeliveryMethod] || [];
+
+      if (!points.length) {
+        listEl.innerHTML = "";
+        return;
+      }
+
+      listEl.innerHTML = points
+        .map(
+          (pt, idx) => `
+          <button type="button" class="quick-point-btn" data-pt-idx="${idx}">
+            ${pt.label}
+          </button>
+        `
+        )
+        .join("");
+
+      listEl.querySelectorAll("[data-pt-idx]").forEach((btn) => {
+        btn.onclick = () => {
+          haptic("light");
+          const pt = points[Number(btn.dataset.ptIdx)];
+          if (!pt) return;
+          if (pt.city && pt.city !== "До востребования" && !cityInput.value.trim()) {
+            cityInput.value = pt.city;
+          }
+          destInput.value = pt.label;
+          updateMapLink();
+          showToast("Точка подставлена");
+        };
+      });
     }
 
     function renderFilters() {
@@ -1128,6 +1217,8 @@
         } else {
           destInput.placeholder = "Адрес или код удобного ПВЗ СДЭК";
         }
+        renderQuickPoints();
+        updateMapLink();
       }
 
       grid.querySelectorAll("[data-method]").forEach((btn) => {
@@ -1268,6 +1359,9 @@
         `;
       }).join("");
     }
+
+    document.getElementById("deliveryCityInput").addEventListener("input", updateMapLink);
+    document.getElementById("deliveryDestInput").addEventListener("input", updateMapLink);
 
     const cartModal = document.getElementById("cartModal");
     document.getElementById("cartBar").onclick = () => {
