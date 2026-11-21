@@ -1,12 +1,96 @@
 const tg = window.Telegram?.WebApp;
-const tgUser = tg?.initDataUnsafe?.user || { id: "guest", username: "guest" };
+const tgUser = tg?.initDataUnsafe?.user || { id: "guest", username: "guest", first_name: "Гость" };
 
 const CART_KEY = `forma_cart_${tgUser.id}`;
 const DROP_SUBS_KEY = `forma_drop_subs_${tgUser.id}`;
+const ORDERS_KEY = `forma_orders_${tgUser.id}`;
 
-// Временная прямая отправка с фронтенда для теста (после проверки лучше вынести в конструктор ботов и сменить токен)
+// Временная прямая отправка с фронтенда для теста (после проверки лучше вынести в бота и сменить токен)
 const BOT_TOKEN = "9018078921:AAFtr3AOF9jIcRCLsJyBXjTdlXU1I8rjtSk";
 const TARGET_CHAT_ID = "-1004351317145";
+
+export const DELIVERY_METHODS = [
+  {
+    id: "cdek",
+    label: "СДЭК",
+    shortLabel: "СДЭК (ПВЗ)",
+    hint: "Укажи город, улицу и номер/адрес удобного ПВЗ СДЭК"
+  },
+  {
+    id: "yandex",
+    label: "Яндекс Маркет",
+    shortLabel: "Яндекс Маркет (ПВЗ)",
+    hint: "Укажи город и адрес/номер пункта выдачи Яндекс Маркета"
+  },
+  {
+    id: "pochta",
+    label: "Почта России",
+    shortLabel: "Почта России",
+    hint: "Укажи индекс, город, улицу, дом и квартиру (или отделение)"
+  },
+  {
+    id: "pickup",
+    label: "Самовывоз",
+    shortLabel: "Самовывоз",
+    hint: "Выбери удобную точку самовывоза — сообщим о готовности"
+  }
+];
+
+export const PICKUP_POINTS = [
+  {
+    id: "spb-center",
+    title: "Точка самовывоза · Санкт-Петербург (центр)",
+    address: "По согласованию после подтверждения заказа",
+    schedule: "По договорённости"
+  },
+  {
+    id: "msk-point",
+    title: "Точка самовывоза · Москва",
+    address: "По согласованию после подтверждения заказа",
+    schedule: "По договорённости"
+  },
+  {
+    id: "other-point",
+    title: "Другая точка по договорённости",
+    address: "Укажи удобный город/ориентир в комментарии",
+    schedule: "Уточняется менеджером"
+  }
+];
+
+export const TRACKING_STAGES = [
+  { key: "created", label: "Принят в обработку", desc: "Заказ оформлен и передан на сборку" },
+  { key: "packed", label: "Упакован и передан", desc: "Товар проверен, упакован и готов к отправке" },
+  { key: "in_transit", label: "В пути", desc: "Заказ движется между сортировочными узлами" },
+  { key: "ready_pickup", label: "Прибыл в точку выдачи", desc: "Ожидает получения в выбранном ПВЗ / точке" },
+  { key: "delivered", label: "Получен", desc: "Заказ успешно выдан покупателю" }
+];
+
+function createTrackingTimeline(stageIndex = 0, note = "") {
+  const now = new Date().toLocaleString("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+
+  return TRACKING_STAGES.map((stage, idx) => ({
+    key: stage.key,
+    label: stage.label,
+    desc: idx === stageIndex && note ? note : stage.desc,
+    done: idx <= stageIndex,
+    current: idx === stageIndex,
+    updatedAt: idx <= stageIndex ? now : null
+  }));
+}
+
+function generateOrderId() {
+  const randomPart = Math.floor(100000 + Math.random() * 900000);
+  return `FRM-${randomPart}`;
+}
+
+function getDeliveryMethodMeta(methodId) {
+  return DELIVERY_METHODS.find((m) => m.id === methodId) || DELIVERY_METHODS[0];
+}
 
 async function sendTelegramNotification(text) {
   if (!BOT_TOKEN || BOT_TOKEN === "ВСТАВЬ_ТОКЕН_БОТА") {
@@ -32,11 +116,16 @@ async function sendTelegramNotification(text) {
 export function loadState() {
   const cart = JSON.parse(localStorage.getItem(CART_KEY) || "[]");
   const dropSubs = JSON.parse(localStorage.getItem(DROP_SUBS_KEY) || "[]");
-  return { cart, dropSubs };
+  const orders = JSON.parse(localStorage.getItem(ORDERS_KEY) || "[]");
+  return { cart, dropSubs, orders };
 }
 
 export function saveCart(cart) {
   localStorage.setItem(CART_KEY, JSON.stringify(cart));
+}
+
+export function saveOrders(orders) {
+  localStorage.setItem(ORDERS_KEY, JSON.stringify(orders));
 }
 
 export function addToCart(cart, product, variant) {
@@ -128,19 +217,119 @@ export function subscribeToDrop(dropSubs, product) {
   return { dropSubs: nextSubs, alreadySubscribed: false };
 }
 
-export function checkoutOrder(cart, comment = "") {
+export function validateDeliveryDetails(delivery = {}) {
+  const method = delivery.method || "cdek";
+  const recipientName = (delivery.recipientName || "").trim();
+  const phone = (delivery.phone || "").trim();
+  const city = (delivery.city || "").trim();
+  const destination = (delivery.destination || "").trim();
+  const pickupPointId = delivery.pickupPointId || "";
+
+  if (!recipientName || recipientName.length < 2) {
+    return { valid: false, error: "Укажи имя или ФИО получателя" };
+  }
+
+  const cleanPhone = phone.replace(/[^\d+]/g, "");
+  if (cleanPhone.length < 10) {
+    return { valid: false, error: "Укажи корректный номер телефона" };
+  }
+
+  if (method === "pickup") {
+    if (!pickupPointId) {
+      return { valid: false, error: "Выбери точку самовывоза" };
+    }
+    return { valid: true, error: null };
+  }
+
+  if (!city) {
+    return { valid: false, error: "Укажи город доставки" };
+  }
+
+  if (!destination || destination.length < 4) {
+    return {
+      valid: false,
+      error:
+        method === "pochta"
+          ? "Укажи адрес или индекс и отделение Почты России"
+          : "Укажи адрес или номер выбранного ПВЗ"
+    };
+  }
+
+  return { valid: true, error: null };
+}
+
+export function advanceOrderTracking(orders, orderId, nextStageIndex, trackingCode = "", note = "") {
+  const safeIndex = Math.max(0, Math.min(TRACKING_STAGES.length - 1, Number(nextStageIndex) || 0));
+  const stageMeta = TRACKING_STAGES[safeIndex];
+
+  const updatedOrders = orders.map((order) => {
+    if (order.id !== orderId) return order;
+    return {
+      ...order,
+      stageIndex: safeIndex,
+      statusLabel: stageMeta.label,
+      trackingCode: trackingCode.trim() || order.trackingCode || "",
+      timeline: createTrackingTimeline(safeIndex, note)
+    };
+  });
+
+  saveOrders(updatedOrders);
+  return updatedOrders;
+}
+
+export function checkoutOrder(cart, delivery = {}, comment = "", existingOrders = []) {
   if (!cart.length) return { ok: false, error: "Корзина пуста" };
 
+  const validation = validateDeliveryDetails(delivery);
+  if (!validation.valid) {
+    return { ok: false, error: validation.error };
+  }
+
   const { totalPrice } = getCartSummary(cart);
-  const payload = {
-    action: "create_order",
+  const orderId = generateOrderId();
+  const methodMeta = getDeliveryMethodMeta(delivery.method);
+  const pickupPoint = PICKUP_POINTS.find((p) => p.id === delivery.pickupPointId);
+
+  const normalizedDelivery = {
+    method: methodMeta.id,
+    methodLabel: methodMeta.label,
+    recipientName: (delivery.recipientName || "").trim(),
+    phone: (delivery.phone || "").trim(),
+    city: methodMeta.id === "pickup" ? (pickupPoint?.title || "Самовывоз") : (delivery.city || "").trim(),
+    destination:
+      methodMeta.id === "pickup"
+        ? `${pickupPoint?.title || "Самовывоз"} — ${pickupPoint?.address || ""}`
+        : (delivery.destination || "").trim(),
+    pickupPointId: delivery.pickupPointId || null
+  };
+
+  const orderRecord = {
+    id: orderId,
+    createdAt: new Date().toISOString(),
+    createdLabel: new Date().toLocaleString("ru-RU", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    }),
     user: {
       tg_id: tgUser.id,
       username: tgUser.username || null
     },
     items: cart,
     total: totalPrice,
-    comment
+    delivery: normalizedDelivery,
+    comment: (comment || "").trim(),
+    stageIndex: 0,
+    statusLabel: TRACKING_STAGES[0].label,
+    trackingCode: "",
+    timeline: createTrackingTimeline(0)
+  };
+
+  const payload = {
+    action: "create_order",
+    order: orderRecord
   };
 
   if (tg?.sendData) {
@@ -153,18 +342,43 @@ export function checkoutOrder(cart, comment = "") {
       `• ${item.title} (${item.size || "-"}, ${item.color || "-"}) × ${item.qty} — ${item.price * item.qty} ₽`
   );
 
+  const deliveryLines =
+    normalizedDelivery.method === "pickup"
+      ? [
+          `Способ: ${normalizedDelivery.methodLabel}`,
+          `Точка: ${normalizedDelivery.destination}`,
+          `Получатель: ${normalizedDelivery.recipientName}`,
+          `Телефон: ${normalizedDelivery.phone}`
+        ]
+      : [
+          `Способ: ${normalizedDelivery.methodLabel}`,
+          `Город: ${normalizedDelivery.city}`,
+          `ПВЗ / адрес: ${normalizedDelivery.destination}`,
+          `Получатель: ${normalizedDelivery.recipientName}`,
+          `Телефон: ${normalizedDelivery.phone}`
+        ];
+
   const orderMessage = [
-    "🛒 Новый заказ — FORMA",
+    `🛒 Новый заказ ${orderId} — FORMA`,
     `Покупатель: ${usernameLabel} (ID: ${tgUser.id})`,
     "",
+    ...deliveryLines,
+    "",
+    "Товары:",
     ...itemsLines,
     "",
     `Итого: ${totalPrice} ₽`,
-    comment ? `Комментарий: ${comment}` : "Комментарий: —"
+    `Статус: ${orderRecord.statusLabel}`,
+    normalizedDelivery.comment || orderRecord.comment
+      ? `Комментарий: ${orderRecord.comment}`
+      : "Комментарий: —"
   ].join("\n");
 
   sendTelegramNotification(orderMessage);
 
+  const nextOrders = [orderRecord, ...existingOrders];
+  saveOrders(nextOrders);
   localStorage.removeItem(CART_KEY);
-  return { ok: true, payload };
+
+  return { ok: true, order: orderRecord, orders: nextOrders, payload };
 }
