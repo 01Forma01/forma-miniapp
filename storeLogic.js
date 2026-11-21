@@ -57,6 +57,7 @@ export function addToCart(cart, product, variant) {
       productId: product.id,
       variantId: variant.id,
       title: product.title,
+      image: product.images?.[0] || "",
       size: variant.size,
       color: variant.color,
       price: variant.price,
@@ -67,6 +68,21 @@ export function addToCart(cart, product, variant) {
 
   saveCart(nextCart);
   return { cart: nextCart, error: null };
+}
+
+export function updateCartItemQty(cart, variantId, delta) {
+  const nextCart = cart
+    .map((item) => {
+      if (item.variantId !== variantId) return item;
+      const nextQty = item.qty + delta;
+      if (nextQty <= 0) return null;
+      if (item.maxStock && nextQty > item.maxStock) return item;
+      return { ...item, qty: nextQty };
+    })
+    .filter(Boolean);
+
+  saveCart(nextCart);
+  return nextCart;
 }
 
 export function getCartSummary(cart) {
