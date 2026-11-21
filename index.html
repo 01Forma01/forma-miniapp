@@ -36,6 +36,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 8px;
       margin-bottom: 16px;
       padding-bottom: 12px;
       border-bottom: 1px solid var(--border);
@@ -46,6 +47,23 @@
       font-weight: 800;
       letter-spacing: 0.08em;
       text-transform: uppercase;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .orders-btn {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+      background: var(--surface-elevated);
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      cursor: pointer;
     }
 
     .user-badge {
@@ -263,7 +281,7 @@
 
     .modal {
       width: 100%;
-      max-height: 88vh;
+      max-height: 90vh;
       overflow-y: auto;
       background: var(--surface);
       border-top-left-radius: 20px;
@@ -444,16 +462,171 @@
       cursor: pointer;
     }
 
+    .section-block {
+      margin-top: 16px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    .section-label {
+      font-size: 13px;
+      font-weight: 700;
+      margin: 0 0 10px;
+    }
+
+    .delivery-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .delivery-option {
+      padding: 10px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--surface-elevated);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    .delivery-option.active {
+      background: var(--accent);
+      color: var(--accent-text);
+      border-color: var(--accent);
+    }
+
+    .delivery-hint {
+      font-size: 12px;
+      color: var(--hint);
+      margin: 0 0 10px;
+    }
+
+    .field-input,
+    .field-select,
     .comment-input {
       width: 100%;
-      margin-top: 14px;
-      margin-bottom: 14px;
+      margin-bottom: 10px;
       padding: 10px 12px;
       border-radius: 10px;
       border: 1px solid var(--border);
       background: var(--surface-elevated);
       color: var(--text);
       font-size: 13px;
+      font-family: inherit;
+    }
+
+    .pickup-card {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      font-size: 12px;
+    }
+
+    .pickup-card strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .pickup-card span {
+      color: var(--hint);
+      display: block;
+    }
+
+    .order-card {
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+
+    .order-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .order-id {
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .order-status-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: var(--accent-text);
+    }
+
+    .order-meta {
+      font-size: 12px;
+      color: var(--hint);
+      margin-bottom: 10px;
+      line-height: 1.45;
+    }
+
+    .track-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 12px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .timeline-step {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      opacity: 0.45;
+    }
+
+    .timeline-step.done {
+      opacity: 1;
+    }
+
+    .step-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-top: 4px;
+      background: var(--hint);
+      flex-shrink: 0;
+    }
+
+    .timeline-step.done .step-dot {
+      background: var(--accent);
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.14);
+    }
+
+    .step-title {
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .step-desc {
+      font-size: 11px;
+      color: var(--hint);
     }
 
     .toast {
@@ -472,6 +645,8 @@
       pointer-events: none;
       transition: opacity 0.2s ease;
       z-index: 60;
+      text-align: center;
+      max-width: 90%;
     }
 
     .toast.show {
@@ -484,7 +659,10 @@
 
   <header class="header">
     <div class="brand-title">FORMA STORE</div>
-    <div id="userBadge" class="user-badge">Гость</div>
+    <div class="header-actions">
+      <button id="openOrdersBtn" class="orders-btn">Заказы (0)</button>
+      <div id="userBadge" class="user-badge">Гость</div>
+    </div>
   </header>
 
   <div id="filters" class="filters"></div>
@@ -502,11 +680,34 @@
   <div id="cartModal" class="modal-backdrop">
     <div class="modal">
       <div class="modal-header">
-        <h2 class="modal-title">Корзина</h2>
+        <h2 class="modal-title">Корзина и доставка</h2>
         <button id="closeCartBtn" class="size-btn">Закрыть</button>
       </div>
+
       <div id="cartItems"></div>
-      <input id="orderComment" class="comment-input" type="text" placeholder="Комментарий к заказу (необязательно)" />
+
+      <div class="section-block">
+        <div class="section-label">1. Способ получения</div>
+        <div id="deliveryMethodsGrid" class="delivery-grid"></div>
+        <p id="deliveryHint" class="delivery-hint"></p>
+
+        <div class="section-label" style="margin-top:12px;">2. Данные получателя и точка</div>
+        <input id="recipientNameInput" class="field-input" type="text" placeholder="ФИО получателя (как в паспорте)" />
+        <input id="recipientPhoneInput" class="field-input" type="tel" placeholder="Телефон (+7 999 000-00-00)" />
+
+        <div id="courierFieldsWrap">
+          <input id="deliveryCityInput" class="field-input" type="text" placeholder="Город" />
+          <input id="deliveryDestInput" class="field-input" type="text" placeholder="Адрес или номер удобного ПВЗ" />
+        </div>
+
+        <div id="pickupFieldsWrap" style="display:none;">
+          <select id="pickupPointSelect" class="field-select"></select>
+          <div id="pickupPointDetails" class="pickup-card"></div>
+        </div>
+
+        <input id="orderComment" class="comment-input" type="text" placeholder="Комментарий к заказу или ориентир (необязательно)" />
+      </div>
+
       <div style="display:flex; justify-content:space-between; font-weight:800; font-size:15px; margin-bottom:14px;">
         <span>Итого</span>
         <span id="modalTotal">0 ₽</span>
@@ -515,9 +716,21 @@
     </div>
   </div>
 
+  <div id="ordersModal" class="modal-backdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Мои заказы и трекинг</h2>
+        <button id="closeOrdersBtn" class="size-btn">Закрыть</button>
+      </div>
+      <div id="ordersList"></div>
+    </div>
+  </div>
+
   <script type="module">
     import { MOCK_CATALOG } from "./catalog.mock.js";
     import {
+      DELIVERY_METHODS,
+      PICKUP_POINTS,
       loadState,
       addToCart,
       updateCartItemQty,
@@ -542,11 +755,13 @@
       userBadge.textContent = tgUser.username ? `@${tgUser.username}` : tgUser.first_name;
     }
 
-    let { cart, dropSubs } = loadState();
+    let { cart, dropSubs, orders } = loadState();
     let activeCategory = "Все";
     const selectedVariants = {};
     let activeProductId = null;
     let activeSlideIndex = 0;
+    let selectedDeliveryMethod = DELIVERY_METHODS[0].id;
+    let selectedPickupPointId = PICKUP_POINTS[0].id;
 
     MOCK_CATALOG.forEach((product) => {
       const firstInStock = product.variants.find((v) => v.stock > 0) || product.variants[0];
@@ -557,12 +772,17 @@
     function showToast(msg) {
       toastEl.textContent = msg;
       toastEl.classList.add("show");
-      setTimeout(() => toastEl.classList.remove("show"), 2000);
+      setTimeout(() => toastEl.classList.remove("show"), 2300);
     }
 
     function formatPrice(val) {
       if (typeof val !== "number") return "Цена уточняется";
       return `${val.toLocaleString("ru-RU")} ₽`;
+    }
+
+    function updateOrdersButton() {
+      const btn = document.getElementById("openOrdersBtn");
+      btn.textContent = `Заказы (${orders.length})`;
     }
 
     function renderFilters() {
@@ -876,6 +1096,70 @@
       }
     }
 
+    function renderDeliverySelector() {
+      const grid = document.getElementById("deliveryMethodsGrid");
+      const hintEl = document.getElementById("deliveryHint");
+      const courierWrap = document.getElementById("courierFieldsWrap");
+      const pickupWrap = document.getElementById("pickupFieldsWrap");
+      const destInput = document.getElementById("deliveryDestInput");
+
+      grid.innerHTML = DELIVERY_METHODS.map((m) => `
+        <button
+          type="button"
+          class="delivery-option ${m.id === selectedDeliveryMethod ? "active" : ""}"
+          data-method="${m.id}"
+        >${m.label}</button>
+      `).join("");
+
+      const activeMeta = DELIVERY_METHODS.find((m) => m.id === selectedDeliveryMethod) || DELIVERY_METHODS[0];
+      hintEl.textContent = activeMeta.hint;
+
+      if (selectedDeliveryMethod === "pickup") {
+        courierWrap.style.display = "none";
+        pickupWrap.style.display = "block";
+        renderPickupPoints();
+      } else {
+        courierWrap.style.display = "block";
+        pickupWrap.style.display = "none";
+        if (selectedDeliveryMethod === "pochta") {
+          destInput.placeholder = "Индекс, улица, дом, кв. (или отделение Почты)";
+        } else if (selectedDeliveryMethod === "yandex") {
+          destInput.placeholder = "Адрес или номер ПВЗ Яндекс Маркета";
+        } else {
+          destInput.placeholder = "Адрес или код удобного ПВЗ СДЭК";
+        }
+      }
+
+      grid.querySelectorAll("[data-method]").forEach((btn) => {
+        btn.onclick = () => {
+          haptic("light");
+          selectedDeliveryMethod = btn.dataset.method;
+          renderDeliverySelector();
+        };
+      });
+    }
+
+    function renderPickupPoints() {
+      const selectEl = document.getElementById("pickupPointSelect");
+      const detailsEl = document.getElementById("pickupPointDetails");
+
+      selectEl.innerHTML = PICKUP_POINTS.map(
+        (pt) => `<option value="${pt.id}" ${pt.id === selectedPickupPointId ? "selected" : ""}>${pt.title}</option>`
+      ).join("");
+
+      const currentPt = PICKUP_POINTS.find((p) => p.id === selectedPickupPointId) || PICKUP_POINTS[0];
+      detailsEl.innerHTML = `
+        <strong>${currentPt.title}</strong>
+        <span>Адрес: ${currentPt.address}</span>
+        <span>График: ${currentPt.schedule}</span>
+      `;
+
+      selectEl.onchange = () => {
+        selectedPickupPointId = selectEl.value;
+        renderPickupPoints();
+      };
+    }
+
     function renderCartBar() {
       const { itemsCount, totalPrice } = getCartSummary(cart);
       const cartBar = document.getElementById("cartBar");
@@ -892,6 +1176,7 @@
       const listEl = document.getElementById("cartItems");
       const { totalPrice } = getCartSummary(cart);
       document.getElementById("modalTotal").textContent = formatPrice(totalPrice);
+      renderDeliverySelector();
 
       if (!cart.length) {
         listEl.innerHTML = `<p style="color:var(--hint); font-size:13px;">Корзина пуста</p>`;
@@ -940,6 +1225,50 @@
       });
     }
 
+    function renderOrdersModal() {
+      const listEl = document.getElementById("ordersList");
+      if (!orders.length) {
+        listEl.innerHTML = `<p style="color:var(--hint); font-size:13px;">У вас пока нет оформленных заказов. После покупки здесь появится статус и передвижение посылки.</p>`;
+        return;
+      }
+
+      listEl.innerHTML = orders.map((order) => {
+        const itemsSummary = order.items
+          .map((i) => `${i.title} (${i.size}) × ${i.qty}`)
+          .join(", ");
+
+        return `
+          <div class="order-card">
+            <div class="order-top">
+              <span class="order-id">Заказ ${order.id}</span>
+              <span class="order-status-pill">${order.statusLabel}</span>
+            </div>
+            <div class="order-meta">
+              <div>Оформлен: ${order.createdLabel} · Сумма: <strong>${formatPrice(order.total)}</strong></div>
+              <div>Состав: ${itemsSummary}</div>
+              <div>Доставка: <strong>${order.delivery.methodLabel}</strong> — ${order.delivery.destination}</div>
+              <div>Получатель: ${order.delivery.recipientName} (${order.delivery.phone})</div>
+            </div>
+            <div class="track-box">
+              <span>Трек-номер:</span>
+              <strong>${order.trackingCode || "появится после передачи в службу"}</strong>
+            </div>
+            <div class="timeline">
+              ${(order.timeline || []).map((step) => `
+                <div class="timeline-step ${step.done ? "done" : ""}">
+                  <span class="step-dot"></span>
+                  <div>
+                    <div class="step-title">${step.label} ${step.updatedAt ? `· ${step.updatedAt}` : ""}</div>
+                    <div class="step-desc">${step.desc}</div>
+                  </div>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
     const cartModal = document.getElementById("cartModal");
     document.getElementById("cartBar").onclick = () => {
       haptic("light");
@@ -951,24 +1280,51 @@
       if (e.target === cartModal) cartModal.classList.remove("open");
     };
 
+    const ordersModal = document.getElementById("ordersModal");
+    document.getElementById("openOrdersBtn").onclick = () => {
+      haptic("light");
+      renderOrdersModal();
+      ordersModal.classList.add("open");
+    };
+    document.getElementById("closeOrdersBtn").onclick = () => ordersModal.classList.remove("open");
+    ordersModal.onclick = (e) => {
+      if (e.target === ordersModal) ordersModal.classList.remove("open");
+    };
+
     document.getElementById("checkoutBtn").onclick = () => {
+      const delivery = {
+        method: selectedDeliveryMethod,
+        recipientName: document.getElementById("recipientNameInput").value,
+        phone: document.getElementById("recipientPhoneInput").value,
+        city: document.getElementById("deliveryCityInput").value,
+        destination: document.getElementById("deliveryDestInput").value,
+        pickupPointId: selectedPickupPointId
+      };
       const comment = document.getElementById("orderComment").value.trim();
-      const res = checkoutOrder(cart, comment);
+
+      const res = checkoutOrder(cart, delivery, comment, orders);
       if (!res.ok) {
         showToast(res.error);
         return;
       }
+
       haptic("medium");
       cart = [];
+      orders = res.orders;
       document.getElementById("orderComment").value = "";
       cartModal.classList.remove("open");
       renderCartBar();
-      showToast("Заказ отправлен");
+      updateOrdersButton();
+      showToast(`Заказ ${res.order.id} оформлен`);
+
+      renderOrdersModal();
+      ordersModal.classList.add("open");
     };
 
     renderFilters();
     renderCatalog();
     renderCartBar();
+    updateOrdersButton();
   </script>
 </body>
 </html>
