@@ -1,28 +1,30 @@
-window.CATALOG_MOCK = [
+export const MOCK_CATALOG = [
   {
-    id: "forma-rubl-bag-hoodie-black",
-    title: "FORMA — «Rubl Bag» Hoodie",
-    subtitle: "Худи «Рублёвая сумка»",
-    category: "hoodies",
-    color: "Чёрный",
-    fabric: "100% хлопок, дышащий, сохраняет форму",
-    features: [
-      "Oversize-крой",
-      "Плотные манжеты",
-      "Регулируемый низ",
-      "Вышивка на груди"
-    ],
-    description:
-      "Оверсайз-худи в чёрном цвете из 100% хлопка с объёмной вышивкой на груди, плотными манжетами и регулируемым низом. Ткань дышит и хорошо сохраняет форму.",
-    sizes: ["S / M", "L / XL"],
-    sizeChartCm: {
-      "S / M": { A: 66, B: 62, C: 77 },
-      "L / XL": { A: 70, B: 66, C: 80 }
-    },
+    id: "forma-tee-01",
+    title: "Oversized Tee FORMA",
+    category: "Футболки",
+    status: "available", // 'available' | 'coming_soon'
+    isMock: true,
+    dropLabel: null,
+    description: "Плотный оверсайз-крой, матовая вышивка и продуманная посадка. Замените текст, фото, цены и остатки на реальные перед релизом.",
     images: [
-      "920BD774-3686-4AD8-B014-7776AE155DE6.png",
-      "IMG_6629.jpeg",
-      "IMG_6628.jpeg"
+      "https://placehold.co/600x750/141414/FFFFFF?text=FORMA+TEE+1",
+      "https://placehold.co/600x750/1f1f1f/FFFFFF?text=FORMA+TEE+2",
+      "https://placehold.co/600x750/2a2a2a/FFFFFF?text=FORMA+TEE+DETAIL"
+    ],
+    sizeChart: {
+      headers: ["Размер", "Длина (см)", "Грудь (см)", "Рукав (см)"],
+      rows: [
+        ["S", "70", "58", "22"],
+        ["M", "73", "61", "23"],
+        ["L", "76", "64", "24"],
+        ["XL", "79", "67", "25"]
+      ],
+      note: "Свободный оверсайз-силуэт. Для посадки ближе к телу бери на размер меньше."
+    },
+    variants: [
+      { id: "v-tee-s-blk", size: "S", color: "Black", price: 3900, stock: 5 },
+      { id: "v-tee-m-blk", size: "M", color: "Black", price: 3900, stock: 8 },
+      { id: "v-tee-l-blk", size: "L", color: "Black", price: 3900, stock: 3 },
+      { id: "v-tee-xl-blk", size: "XL", color: "Black", price: 3900, stock: 0 }
     ]
-  }
-];
