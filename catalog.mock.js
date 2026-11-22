@@ -6,8 +6,7 @@ export const MOCK_CATALOG = [
     status: "available",
     isMock: true,
     dropLabel: null,
-    description:
-      "Оверсайз-худи в чёрном цвете из 100% хлопка с вышивкой на груди, плотными манжетами и регулируемым низом. Ткань дышит и хорошо сохраняет форму.",
+    description: "Оверсайз-худи в чёрном цвете из 100% хлопка с вышивкой на груди, плотными манжетами и регулируемым низом. Ткань дышит и хорошо сохраняет форму.",
     images: [
       "https://i.postimg.cc/zBTrRJBb/920BD774-3686-4AD8-B014-7776AE155DE6.png",
       "https://i.postimg.cc/XJrZMBsp/IMG-6629.jpg",
