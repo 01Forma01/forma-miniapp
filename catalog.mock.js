@@ -1,49 +1,27 @@
-{
-    id: "forma-hoodie-02",
-    title: "Cropped Hoodie FORMA",
+  {
+    id: "forma-rubl-bag-hoodie-black",
+    title: "FORMA — «Rubl Bag» Hoodie",
     category: "Худи",
-    status: "coming_soon",
+    status: "available", // 'available' | 'coming_soon'
     isMock: true,
-    dropLabel: "Скоро дроп",
-    description: "Укороченный худи с плотной посадкой. Цена и старт продаж появятся в день дропа.",
+    dropLabel: null,
+    description:
+      "Оверсайз-худи в чёрном цвете из 100% хлопка с вышивкой на груди, плотными манжетами и регулируемым низом. Ткань дышит и хорошо сохраняет форму.",
     images: [
-      "https://placehold.co/600x750/181818/FFFFFF?text=FORMA+HOODIE+1",
-      "https://placehold.co/600x750/242424/FFFFFF?text=FORMA+HOODIE+2"
+      "https://i.postimg.cc/zBTrRJBb/920BD774-3686-4AD8-B014-7776AE155DE6.png",
+      "https://i.postimg.cc/XJrZMBsp/IMG-6629.jpg",
+      "https://i.postimg.cc/59qJ4NDt/IMG-6628.jpg"
     ],
     sizeChart: {
       headers: ["Размер", "Длина (см)", "Грудь (см)", "Рукав (см)"],
       rows: [
-        ["M", "65", "65", "58"],
-        ["L", "68", "68", "60"]
+        ["S / M", "66", "62", "77"],
+        ["L / XL", "70", "66", "80"]
       ],
-      note: "Кроп-посадка до пояса с объёмным рукавом."
+      note: "Oversize-крой, 100% хлопок, плотные манжеты, регулируемый низ."
     },
     variants: [
-      { id: "v-hood-m-blk", size: "M", color: "Black", price: null, stock: 0 },
-      { id: "v-hood-l-blk", size: "L", color: "Black", price: null, stock: 0 }
-    ]
-  },
-  {
-    id: "forma-bag-03",
-    title: "Daily Bag FORMA",
-    category: "Сумки",
-    status: "coming_soon",
-    isMock: true,
-    dropLabel: "Скоро дроп",
-    description: "Повседневная модель в глубоком бордовом и чёрном исполнении с фирменной вышивкой.",
-    images: [
-      "https://placehold.co/600x750/241116/FFFFFF?text=FORMA+BAG+1",
-      "https://placehold.co/600x750/361820/FFFFFF?text=FORMA+BAG+2"
-    ],
-    sizeChart: {
-      headers: ["Модель", "Высота (см)", "Ширина (см)", "Глубина (см)"],
-      rows: [
-        ["OneSize", "28", "38", "12"]
-      ],
-      note: "Замеры по внешним габаритам изделия в сантиметрах."
-    },
-    variants: [
-      { id: "v-bag-one-brg", size: "OneSize", color: "Burgundy / Black", price: null, stock: 0 }
+      { id: "v-hoodie-sm-blk", size: "S / M", color: "Black", price: 4500, stock: 5 },
+      { id: "v-hoodie-lxl-blk", size: "L / XL", color: "Black", price: 4500, stock: 5 }
     ]
   }
-];
