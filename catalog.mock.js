@@ -1,8 +1,9 @@
+export const MOCK_CATALOG = [
   {
     id: "forma-rubl-bag-hoodie-black",
     title: "FORMA — «Rubl Bag» Hoodie",
     category: "Худи",
-    status: "available", // 'available' | 'coming_soon'
+    status: "available",
     isMock: true,
     dropLabel: null,
     description:
@@ -25,3 +26,4 @@
       { id: "v-hoodie-lxl-blk", size: "L / XL", color: "Black", price: 4500, stock: 5 }
     ]
   }
+];
